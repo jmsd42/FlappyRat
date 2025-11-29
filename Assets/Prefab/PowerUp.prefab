@@ -104,7 +104,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34323a3f8b1fb8e45b1e7d2da19972d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PowerUpItem
-  lifetime: 6
+  moveSpeed: 6
 --- !u!61 &-6710108713945529300
 BoxCollider2D:
   m_ObjectHideFlags: 0

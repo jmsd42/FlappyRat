@@ -3,14 +3,23 @@ using UnityEngine;
 
 public class PipeController : MonoBehaviour
 {
+    private SimpleObjectPool pool;
 
-    public float maxTime = 1.5f;
+    public static float currentGlobalSpeed = 6f;
+
+    public Color originalColor;
+    public Color newColor = new Color(1f, 1f, 1f, 1f);
+    public float changeColor = 5f;
+    public SpriteRenderer spriteRenderer;
+
     public float heightRange = 0.45f;
-    public GameObject pipe;
     public float pipeSpeed = 6f;
     public float pipeDestroy = -10f;
 
-    public float timer;
+
+    public float lifeTime = 1.5f;
+    private float lifeTimer;
+
 
     // lineas de chatgpt
     [SerializeField] private GameObject powerUpPrefab;
@@ -19,38 +28,64 @@ public class PipeController : MonoBehaviour
 
     public PlayerController player;
 
-    private void Start()
+    public void SetPool(SimpleObjectPool objectPool)
+    {
+        pool = objectPool;
+    }
+
+    void Awake()
+    {
+        originalColor = spriteRenderer.color; // Guardar solo una vez
+    }
+
+    void OnEnable()
     {
         if (GameController.instance.canPlay)
         {
+            lifeTimer = 0;
+            ResetValues();   // Restaurar colores ANTES de usar el objeto
             SpawnPipe();
         }
     }
 
     private void Update()
     {
-        if (GameController.instance.canPlay)
-        {
-            if (timer > maxTime)
-            {
-                SpawnPipe();
-                timer = 0;
-            }
+        if (!GameController.instance.canPlay)
+            return;
 
-            timer += Time.deltaTime;
+        lifeTimer += Time.deltaTime;
+
+        // Cambio de color por tiempo (ARREGLO: aplicar a TODOS los SpriteRenderer)
+        if (lifeTimer >= changeColor)
+        {
+            SpriteRenderer[] allRenderers = GetComponentsInChildren<SpriteRenderer>();
+            foreach (var r in allRenderers)
+                r.color = newColor;
+        }
+
+        // Tiempo de vida del tubo
+        if (lifeTimer > lifeTime)
+        {
+            ResetValues();
+            ReturnToPool();
         }
     }
 
     //lineas chatgpt
     private void SpawnPipe()
     {
-        Vector3 spawnPos = transform.position + new Vector3(0, UnityEngine.Random.Range(-heightRange, heightRange));
-        GameObject newPipe = Instantiate(pipe, spawnPos, Quaternion.identity);
+        // Nueva posición aleatoria vertical
+        float offsetY = UnityEngine.Random.Range(-heightRange, heightRange);
+        transform.position = new Vector3(transform.position.x, transform.position.y + offsetY, transform.position.z);
 
-        // Añadimos un componente temporal para mover el tubo
-        PipeMovement pipeMovement = newPipe.AddComponent<PipeMovement>();
-        pipeMovement.speed = pipeSpeed;
-        pipeMovement.destroyX = pipeDestroy;
+        // Asignar límite de destrucción
+        PipeMovement pm = GetComponentInChildren<PipeMovement>();
+
+        if (pm == null)
+        {
+            pm = gameObject.AddComponent<PipeMovement>();
+        }
+        pm.destroyX = pipeDestroy;
 
         // Spawnear power-up entre los tubos
         if (canSpawnPowerUp
@@ -59,52 +94,33 @@ public class PipeController : MonoBehaviour
             && player.CanCollectMorePowerUps()
             && PowerUpItem.activePowerUps < 1) // nuevo límite de power-ups en escena
         {
-            SpawnPowerUpBetweenPipes(newPipe);
+            SpawnPowerUpBetweenPipes(gameObject);
         }
     }
-
-    private class PipeMovement : MonoBehaviour
+    public class PipeMovement : MonoBehaviour
     {
-        public float speed;
         public float destroyX;
+
+        private void OnEnable()
+        {
+            // Siempre usar la velocidad global actual del juego
+            // Esto permite que TODO respondan a powerups
+        }
 
         private void Update()
         {
-            transform.position += Vector3.left * speed * Time.deltaTime;
+            transform.position += Vector3.left * PipeController.currentGlobalSpeed * Time.deltaTime;
 
             if (transform.position.x < destroyX)
             {
-                Destroy(gameObject);
+                PipeController controller = GetComponent<PipeController>();
+                controller?.ReturnToPool();
             }
         }
-
     }
-    //private void SpawnPipe()
-    //{
-    //    Vector3 spawnPos = transform.position + new Vector3(0, UnityEngine.Random.Range(-heightRange, heightRange));
-    //    GameObject newPipe = Instantiate(pipe, spawnPos, Quaternion.identity);
-
-    //    if (GameController.instance.canPlay)
-    //    {
-    //        Vector3 targetPos = new Vector3(pipeDestroy, newPipe.transform.position.y, newPipe.transform.position.z);
-    //        LeanTween.move(newPipe, targetPos, pipeSpeed).setEaseLinear().setOnComplete(() => Destroy(newPipe));
-    //    }
-    //    else
-    //    {
-    //        LeanTween.cancel(newPipe);
-    //    }
-
-    //    // lineas de chatgpt
-    //    if (canSpawnPowerUp && UnityEngine.Random.value < powerUpChance)
-    //    {
-    //        SpawnPowerUpBetweenPipes(newPipe);
-    //    }
-
-    //}
-
-    // lineas de chatgpt
     private void SpawnPowerUpBetweenPipes(GameObject pipeInstance)
     {
+
         // Busca los tubos dentro del prefab
         Transform topPipe = pipeInstance.transform.Find("DownwardPipe_0");
         Transform bottomPipe = pipeInstance.transform.Find("UpwardPipe_0");
@@ -128,36 +144,44 @@ public class PipeController : MonoBehaviour
 
     public void UpdateAllPipeSpeeds(float newSpeed)
     {
-        pipeSpeed = newSpeed;
-
-        // Busca todos los objetos con el componente PipeMovement y actualiza su velocidad
-        PipeMovement[] allPipes = FindObjectsOfType<PipeMovement>();
-        foreach (PipeMovement pipe in allPipes)
-        {
-            pipe.speed = newSpeed;
-        }
+        PipeController.currentGlobalSpeed = newSpeed;
     }
 
     public void AdjustPipeSpeed(float newSpeed, bool resetTimer = false)
     {
-        float oldSpeed = pipeSpeed;
+        float oldSpeed = PipeController.currentGlobalSpeed;
         float ratio = newSpeed / oldSpeed;
 
-        pipeSpeed = newSpeed;
+        // Cambiar velocidad global
+        PipeController.currentGlobalSpeed = newSpeed;
 
-        // Mantener un ritmo de aparición proporcional a la velocidad
-        maxTime = Mathf.Clamp(maxTime / ratio, 0.5f, 3f);
+        // Ajustar vida del tubo para que no queden demasiado juntos o demasiado separados
+        lifeTime = Mathf.Clamp(lifeTime / ratio, 0.5f, 3f);
 
-        // En lugar de reiniciar siempre el timer, lo ajustamos proporcionalmente
-        timer = timer * (oldSpeed / newSpeed);
+        if (resetTimer)
+            lifeTimer = 0f;
+        else
+            lifeTimer = lifeTimer * (oldSpeed / newSpeed);
 
-        // Asegurar que los tubos actuales también cambian su velocidad
-        PipeMovement[] allPipes = FindObjectsOfType<PipeMovement>();
-        foreach (PipeMovement pipe in allPipes)
-        {
-            pipe.speed = newSpeed;
-        }
+        Debug.Log($"[PipeController] Ajuste: oldSpeed={oldSpeed}, newSpeed={newSpeed}");
+    }
+    void ReturnToPool()
+    {
+        if (pool != null)
+            pool.ReturnToPool(gameObject);
+        else
+            gameObject.SetActive(false);
+    }
 
-        Debug.Log($"[PipeController] Ajuste: oldSpeed={oldSpeed}, newSpeed={newSpeed}, maxTime={maxTime:F2}, timer={timer:F2}");
+    private void ResetValues()
+    {
+        // Restaurar color del sprite principal
+        if (spriteRenderer != null)
+            spriteRenderer.color = originalColor;
+
+        // Restaurar color de todos los hijos
+        SpriteRenderer[] renderers = GetComponentsInChildren<SpriteRenderer>();
+        foreach (var r in renderers)
+            r.color = originalColor;
     }
 }

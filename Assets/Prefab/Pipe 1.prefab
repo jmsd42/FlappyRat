@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2131416714714302763}
   - component: {fileID: 5420958265071712855}
   - component: {fileID: 7050584581993017581}
+  - component: {fileID: 7932146229426753941}
   m_Layer: 0
   m_Name: Pipe 1
   m_TagString: Untagged
@@ -27,7 +28,7 @@ Transform:
   m_GameObject: {fileID: 1678124667389518941}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.00498, y: 1.195, z: 0}
+  m_LocalPosition: {x: 9.62, y: 1.83, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -93,6 +94,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d58757d394a87a742b09e7ba41cecdde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScoreIncrease
+--- !u!114 &7932146229426753941
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1678124667389518941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2d400366e1de184a9a38d50e0d7e2a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PipeController
+  originalColor: {r: 0, g: 0, b: 0, a: 0}
+  newColor: {r: 0, g: 0, b: 0, a: 1}
+  changeColor: 3.2
+  spriteRenderer: {fileID: 2106553536487183567}
+  heightRange: 2
+  pipeSpeed: 10
+  pipeDestroy: -12
+  lifeTime: 6
+  powerUpPrefab: {fileID: 8503572813129412466, guid: 25fc18318be7eeb459ef19b7f3bd94e3, type: 3}
+  powerUpChance: 0.3
+  player: {fileID: 5529465499596412793, guid: 53201b8ecc3ff214aa527c1a9bc19a12, type: 3}
 --- !u!1 &5537788015907162454
 GameObject:
   m_ObjectHideFlags: 0

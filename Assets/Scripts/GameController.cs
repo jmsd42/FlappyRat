@@ -212,6 +212,7 @@ public class GameController : MonoBehaviour
     }
     public void RestartGame()
     {
+        //PowerUpItem.activePowerUps = 0;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
